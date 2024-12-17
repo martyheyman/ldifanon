@@ -1,0 +1,128 @@
+.Dd July &\ 2021
+.Dt LDIFANON \&1 "SYMAS Utilities"
+.Os "SYMAS" "1.0"
+.Sh NAME
+.Nm ldifanon
+.Nd parse LDIF file and produce anonymized output
+.Sh SYNOPSIS
+.Ic ldifanon Op Fl n
+.Op Fl o Ar output
+.Op Fl d Ar database
+.Op Fl w Ar whitelist \*(Ba Fl b Ar blacklist
+.Bk
+.Ar ldif_input ...
+.Ek
+.sp
+.Ic ldifq Ar database Ar "anonymous-DN"
+.
+.Sh DESCRIPTION
+.Nm
+reads 
+.Ar ldif_input ,
+a file representing an LDAP database, and produces another version of
+the file with certain information replaced by anonymous numbers, plus
+a database that can be used to look up the replacement values. The
+purpose of
+.Nm
+is to retain the structure of the database for troubleshooting and
+analysis without exposing proprietary or confidential information.
+.Pp
+If the
+.Fl o
+option is used, the new LDIF file is written to
+.Ar output ,
+otherwise it is written to standard output. If the
+.Fl d
+option is used, the database is written to
+.Ar database .
+Without
+.Fl d ,
+the database name will be
+.Ar output Ns Li .db ,
+or, in the absence of
+.Ar output ,
+the database name will be
+.Ar ldif_input Ns Li .db .
+.Pp
+The
+.Fl n
+option creates a new database.  Without it,
+.Nm
+extends any existing database.
+.
+.Pp
+By default, all string-valued attributes are anonymized, while
+quantities (numbers) are not. This default can be controlled with 
+.Ar whitelist
+and
+.Ar blacklist ,
+optional (and mutually exclusive) names of files that contain
+lists of attributes to anonymize. With
+.Fl w ,
+values for the attributes named in
+.Ar whitelist
+are passed
+.Dq "in the clear" ,
+unaltered, and all others are anonymized.
+With the
+.Fl b
+option,
+values for the attributes named in
+.Ar blacklist
+are anonymized, and anything else is passed to the output
+unaltered.
+.Pp
+.Ar whitelist
+and
+.Ar blacklist
+are simple text files containing a list of attribute names separated
+by whitespace.
+.Nm
+imposes no constraint on the order or arrangement of the names in the file.
+.Pp
+The definition of
+.Dq string-valued
+is simple: the attribute value is passed through
+.Xr sscanf 3
+with conversions of either
+.Ql %ld
+or
+.Ql %f .
+If neither conversion completely processes the input value, then
+something in the value is non-numeric, and it is treated as a string. 
+.
+.Pp
+.Ic ldifq
+is a utility to reconstruct an LDIF record from
+.Ar database ,
+the database produced by
+.Nm .
+Looking at the anonymized LDIF file, choose a DN number.  Provide that as the
+.Ar anonymous-DN
+argument.
+.Ic dlifq
+reproduces the original LDIF record on standard output.  The only
+change is that any line-folding in the original is lost: each
+attribute appears one per line.
+.
+.Sh IMPLEMENTATION NOTES
+The database produced by
+.Nm
+is a sqlite3 database.  The interested user may wish to write SQL
+queries for it.  The database structure is not secret.  For further
+details, contact SYMAS Corporation (www.symas.com).
+.
+.\" .Sh ENVIRONMENT
+.\" .Sh FILES
+.\" .Sh EXIT STATUS
+.\" .Sh EXAMPLES
+.\" .Sh DIAGNOSTICS
+.\" .Sh COMPATIBILITY
+.\" .Sh SEE ALSO
+.\" .Sh STANDARDS
+.\" .Sh HISTORY
+.\" .Sh AUTHORS
+.\" .Sh CAVEATS
+.\" .Sh BUGS
+
+\" LocalWords: anonymize

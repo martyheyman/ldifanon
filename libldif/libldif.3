@@ -1,0 +1,162 @@
+.Dd July &\ 2021
+.Dt LIBLDIF 3 Symas
+.Os 
+.Sh NAME
+.Nm libldif
+.Nd parse LDIF file and process with user-defined callback
+.Sh LIBRARY
+LDIF parser library (libldif, -lldif)
+.Sh SYNOPSIS
+.In libldif.h
+.Bd -literal
+struct attribute_t {
+  char name[30], *value;
+};
+
+typedef bool (*ldif_dn_t)( const char dn[],
+			   size_t nattr,
+			   struct attribute_t attrs[] );
+
+typedef bool (*ldif_attr_t)( struct attribute_t *attr );
+.Ed
+.Bl -item -compact
+.It
+.Vt extern ldif_dn_t Va ldif_dn ;
+.It
+.Vt extern ldif_attr_t Va ldif_attr ;
+.It
+.Vt extern FILE * Va yyin ;
+.It
+.Ft int Fn yyparse void
+.It
+.Ft void Fn set_print_callbacks "void"
+.El
+.
+.Sh DESCRIPTION
+.Nm 
+parses an LDIF file and calls user-defined functions for each
+.Bl -bullet -compact -offset indent
+.It
+Distinguished Name (DN) record, and
+.It
+Attribute (name-value pair)
+.El
+.
+The user assigns functions to the either or both of the function pointers
+.Va ldif_dn
+and
+.Va ldif_attr .
+The input file stream is assigned to 
+.Va yyin ,
+and parsing commences with a call to
+.Fn yyparse .
+.Pp
+For each record, the parser calls the function assigned to
+.Va ldif_dn ,
+passing the DN in
+.Fa dn ,
+the attribute count in
+.Fa nattr ,
+and an array of attributes in 
+.Fa attrs .
+The array elements are of type
+.Vt struct attribute_t ,
+which has two members,
+.Va name ,
+an array, and
+.Va value ,
+a pointer, each referring to NUL-terminated strings. The
+user may modify any attribute, or even replace a  
+.Va value
+entirely.
+If no value was provided for the attribute,
+.Va value
+will be NULL.
+.Pp
+Although it's not usually needed, individual attributes may
+also be processed through the function assigned to
+.Va ldif_attr .
+This is called as the attributes are being prepared, 
+.Em before
+the call to
+.Va ldif_dn ,
+The user may also modify either parameter at this juncture.
+.Pp
+If either
+.Va ldif_attr 
+of
+.Va ldif_dn 
+returns
+.Sy false ,
+parsing immediately ceases and
+.Fn yyparse
+returns 1.
+.Pp
+As a convenience, the function
+.Fn set_print_callbacks
+is provided.  It sets
+.Va ldiff_dn
+to a function that recapitulates the input on standard output. It can
+be handy to demonstrate how the parser is interpreting a file.
+.
+.Sh IMPLEMENTATION NOTES
+.Nm
+is built from
+.Xr yacc 3
+sources, specifically GNU Bison. Bison exposes several variables to
+the application for debugging and other reasons. For example, the variable
+.Va yylineno
+reports the current line number in the file being parsed.  See the
+.Xr bison 3
+documentation for details. 
+.
+.Sh RETURN VALUES
+.Fn  yyparse
+returns the value 0 if successful; otherwise the value 1 is returned.  
+.
+.Sh EXAMPLES
+.
+.Bd -literal -offset indent
+static bool
+print_cb( const char dn[],
+	       size_t nattr,
+	       struct attribute_t attrs[] ) {
+    printf( "%s\n", dn );
+    for( const struct attribute_t  *attr = attrs;
+	 attr < attrs + nattr; attr++ ) {
+	printf( "%8zu %s = %s\n",
+		1 + (attr - attrs), 
+		attr->name,
+		attr->value? attr->value : "(none)" );
+    }
+    printf( "\n" );
+    return true;
+}    
+
+static int
+process( const char filename[] ) {
+  extern int yylineno;
+  FILE * input; 
+
+  ldif_dn = print_cb;
+
+  if( (input = fopen(filename, "r")) == NULL ) {
+    err(EXIT_FAILURE, "cannot open '%s'", filename);
+  }
+
+  return yyparse();
+}
+.Ed
+.
+.Sh SEE ALSO
+.Xr bison 3
+.
+.\" .Sh STANDARDS
+.\" .Sh HISTORY
+
+.Sh AUTHORS
+.Nm
+was written by James K. Lowden
+.
+.\" .Sh CAVEATS
+.\" .Sh BUGS

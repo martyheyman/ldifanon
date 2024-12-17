@@ -1,0 +1,36 @@
+#! /bin/sh
+set -e
+
+#
+# Reproduce original LDIF record from the database.
+#
+# Command-line arguments are database name and DN number, as seen in
+# the anonymized version.
+#
+# Requires sqlite3 command-line utility. 
+#
+
+sqlite=$(command -v sqlite3)
+
+if [ -z "$sqlite" ]
+then
+    echo sqlite3 apparently not installed  >&2
+    exit 1
+fi
+
+if [ -z "$1" ]
+then
+    echo "syntax: $0 dbname dn_number (missing dbname)" >&2
+    exit 1
+fi
+
+if [ -z "$2" ]
+then
+    echo "syntax: $0 dbname dn_number (missing dn)" >&2
+    exit 1
+fi
+
+$sqlite "$1" <<EOF
+select orig from ldif where did = $2
+order by aid
+EOF
